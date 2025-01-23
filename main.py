@@ -70,7 +70,7 @@ def start_window():
 
 
 class Cursor(pygame.sprite.Sprite):
-    def __init__(self, pos, image, level_objects=None, *groups):
+    def __init__(self, pos, image, level_objects=None, animated_frames=False, pause_animating=5, *groups):
         super().__init__(*groups)
         self.image = image
         self.rect = self.image.get_rect()
@@ -78,12 +78,39 @@ class Cursor(pygame.sprite.Sprite):
         self.level_objects = level_objects
         self.load_objects(self.level_objects)
         self.prev_pos = pos
+        self.animated_frames = animated_frames
+        self.frames = []
+        self.cur_frame = 0
+        self.pause_animating = pause_animating
+        self.time_animating = 0
+        if self.animated_frames:
+            self.cut_sheet(self.image)
+            self.image = self.frames[self.cur_frame]
+
+    def cut_sheet(self, sheet, columns=None, rows=1):
+        if columns is None:
+            columns = self.animated_frames
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
 
     def update(self, pos=None):
         if pos:
             self.prev_pos = pos
             self.rect.topleft = pos
             return
+
+        if self.animated_frames:
+            self.time_animating += 1
+            if self.time_animating >= self.pause_animating:
+                self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+                self.image = self.frames[self.cur_frame]
+                self.time_animating = 0
+
         x, y = pygame.mouse.get_pos()  # Получаем текущую позицию мыши
         current_pos = (x, y)
 
@@ -221,6 +248,7 @@ def main():
     global level
 
     pygame.mouse.set_visible(False)
+    # cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor_animated_lightning.png'), animated_frames=4)
     cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))
     cursor_group = pygame.sprite.Group(cursor)
     level = Level(['level1.csv', 'level2.csv'])
