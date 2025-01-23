@@ -1,6 +1,8 @@
 import math
 import os
 import sys
+import time
+import inspect
 import pygame
 import collisions
 
@@ -74,10 +76,12 @@ class Cursor(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.topleft = pos
         self.level_objects = level_objects
+        self.load_objects(self.level_objects)
         self.prev_pos = pos
 
     def update(self, pos=None):
         if pos:
+            self.prev_pos = pos
             self.rect.topleft = pos
             return
         x, y = pygame.mouse.get_pos()  # Получаем текущую позицию мыши
@@ -100,7 +104,8 @@ class Cursor(pygame.sprite.Sprite):
         self.prev_pos = self.rect.topleft
 
     def load_objects(self, objects):
-        self.level_objects = objects
+        if objects:
+            self.level_objects = pygame.sprite.Group(tuple(filter(lambda obj: obj.has_collision, objects)))
 
 
 class Wall(pygame.sprite.Sprite):
@@ -116,31 +121,84 @@ class Wall(pygame.sprite.Sprite):
         self.has_collision = True
 
 
+class AnimatedFinish(pygame.sprite.Sprite):
+    def __init__(self, pos, image=None, clip_height=10, speed=1, pause_duration=30, *groups):
+        super().__init__(*groups)
+        self.x1, self.y1, self.x2, self.y2 = pos
+        self.width, self.height = abs(self.x1 - self.x2), abs(self.y1 - self.y2)
+        self.clip_height, self.speed, self.pause_duration = clip_height, speed, pause_duration
+        self.full_image = image if image else self.checkerboard((self.width, self.height * 2))
+        self.image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        self.rect = self.image.get_rect(topleft=(self.x1, self.y1))
+        self.scroll_y = 0
+        self.paused = False
+        self.pause_timer = 0
+        self.has_collision = False
+
+    def checkerboard(self, size, cell_size=5):
+        img = pygame.Surface(size)
+        for row in range(size[1] // cell_size):
+            for col in range(size[0] // cell_size):
+                color = 'black' if (row + col) % 2 == 0 else 'white'
+                pygame.draw.rect(img, color, (col * cell_size, row * cell_size, cell_size, cell_size))
+        return img
+
+    def update(self):
+        if cursor:
+            if self.rect.collidepoint(cursor.rect.topleft):
+                print('!!!')
+                level.load()
+
+        if self.paused:
+            self.pause_timer += 1
+            if self.pause_timer >= self.pause_duration:
+                self.paused = False
+                self.pause_timer = 0
+        else:
+            self.scroll_y = (self.scroll_y + self.speed) % (self.full_image.get_height() - self.height)
+            if self.scroll_y == 0:
+                self.paused = True
+
+        self.image.fill((0, 0, 0, 0))
+        self.image.blit(self.full_image, (0, -self.scroll_y))
+        if self.scroll_y > self.full_image.get_height() - self.height - self.clip_height:
+            overlap = self.scroll_y - (self.full_image.get_height() - self.height - self.clip_height)
+            self.image.blit(self.full_image, (0, self.height - overlap), (0, 0, self.width, overlap))
+
+
 class Level:
     names_to_classes = {
         'wall': Wall,
         'cursor': Cursor,
+        'finish': AnimatedFinish,
     }
 
-    def __init__(self, file_name, cursor=None):
-        self.file_name = file_name
-        self.cursor = cursor
+    def __init__(self, file_names):
+        self.file_names = file_names
+        self.cur_level = 0
         self.sprites = pygame.sprite.Group()
         self.load()
 
     def load(self, file_name=None):
+        self.sprites = pygame.sprite.Group()
         if file_name is None:
-            file_name = self.file_name
+            if self.cur_level >= len(self.file_names):
+                return
+            file_name = self.file_names[self.cur_level]
+            self.cur_level += 1
         with open(os.path.join('data', file_name), 'r') as f:
             for line in f.readlines():
                 line = line.strip()
                 if line.startswith('#'):
                     continue
                 obj, *data = line.split(';')
-                if obj == 'cursor' and self.cursor is not None:
-                    self.cursor.update((int(data[0]), int(data[1])))
+                if obj == 'cursor':
+                    cursor.update((int(data[0]), int(data[1])))
+                    pygame.mouse.set_pos((int(data[0]), int(data[1])))
                 elif obj in self.names_to_classes:
-                    self.sprites.add(self.names_to_classes[obj](tuple(map(int, data))))
+                    obj = self.names_to_classes[obj](tuple(map(int, data)))
+                    self.sprites.add(obj)
+        cursor.load_objects(self.sprites)
 
 
 def pause_screen():
@@ -159,10 +217,13 @@ def pause_screen():
 
 
 def main():
+    global cursor
+    global level
+
     pygame.mouse.set_visible(False)
     cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))
     cursor_group = pygame.sprite.Group(cursor)
-    level = Level('level1.csv', cursor)
+    level = Level(['level1.csv', 'level2.csv'])
     cursor.load_objects(level.sprites)
     while True:
         for event in pygame.event.get():
@@ -175,6 +236,7 @@ def main():
                     pygame.mouse.set_visible(False)
 
         screen.fill((255, 255, 255))
+        level.sprites.update()
         level.sprites.draw(screen)
         cursor_group.update()
         cursor_group.draw(screen)
