@@ -55,6 +55,31 @@ def start_window():
     all_sprites = pygame.sprite.Group()
     play_button = GUIButton((313, 407),
         load_image('play_button_default.png'), load_image('play_button_active.png'), lambda: True, all_sprites)
+    rules_button = GUIButton((10, 535),
+        load_image('rules_button_default.png'), load_image('rules_button_active.png'), lambda: [rules_window()], all_sprites)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+        if play_button.update():
+            return
+        if rules_button.update():
+            return
+        screen.fill((0, 0, 0))
+        screen.blit(im, (0, 0))
+        all_sprites.update()
+        all_sprites.draw(screen)
+        pygame.display.flip()
+        clock.tick(60)
+
+
+def rules_window():
+    im = load_image('rules_window.png')
+    all_sprites = pygame.sprite.Group()
+    play_button = GUIButton((594, 520),
+        load_image('play_button_default.png'), load_image('play_button_active.png'), lambda: True, all_sprites)
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -67,7 +92,6 @@ def start_window():
         all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(60)
-
 
 class Cursor(pygame.sprite.Sprite):
     def __init__(self, pos, image, level_objects=None, animated_frames=False, pause_animating=5, *groups):
