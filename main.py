@@ -1,8 +1,5 @@
-import math
 import os
 import sys
-import time
-import inspect
 import pygame
 import collisions
 
@@ -93,8 +90,28 @@ def rules_window():
         pygame.display.flip()
         clock.tick(60)
 
+
+class Image(pygame.sprite.Sprite):
+    def __init__(self, pos, image_default, image_active=None, *groups):
+        super().__init__(*groups)
+        self.image_default = image_default
+        self.image_active = image_active
+        self.image = self.image_default
+        self.rect = self.image_default.get_rect()
+        self.rect.topleft = pos
+        self.has_collision = False
+
+    def update(self):
+        x, y = pygame.mouse.get_pos()
+        if self.image_active:
+            if self.rect.collidepoint(x, y):
+                self.image = self.image_active
+            else:
+                self.image = self.image_default
+
+
 class Cursor(pygame.sprite.Sprite):
-    def __init__(self, pos, image, level_objects=None, animated_frames=False, pause_animating=5, *groups):
+    def __init__(self, pos, image, level_objects=None, *groups):
         super().__init__(*groups)
         self.image = image
         self.rect = self.image.get_rect()
@@ -102,38 +119,12 @@ class Cursor(pygame.sprite.Sprite):
         self.level_objects = level_objects
         self.load_objects(self.level_objects)
         self.prev_pos = pos
-        self.animated_frames = animated_frames
-        self.frames = []
-        self.cur_frame = 0
-        self.pause_animating = pause_animating
-        self.time_animating = 0
-        if self.animated_frames:
-            self.cut_sheet(self.image)
-            self.image = self.frames[self.cur_frame]
-
-    def cut_sheet(self, sheet, columns=None, rows=1):
-        if columns is None:
-            columns = self.animated_frames
-        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
-                                sheet.get_height() // rows)
-        for j in range(rows):
-            for i in range(columns):
-                frame_location = (self.rect.w * i, self.rect.h * j)
-                self.frames.append(sheet.subsurface(pygame.Rect(
-                    frame_location, self.rect.size)))
 
     def update(self, pos=None):
         if pos:
             self.prev_pos = pos
             self.rect.topleft = pos
             return
-
-        if self.animated_frames:
-            self.time_animating += 1
-            if self.time_animating >= self.pause_animating:
-                self.cur_frame = (self.cur_frame + 1) % len(self.frames)
-                self.image = self.frames[self.cur_frame]
-                self.time_animating = 0
 
         x, y = pygame.mouse.get_pos()  # Получаем текущую позицию мыши
         current_pos = (x, y)
@@ -143,6 +134,8 @@ class Cursor(pygame.sprite.Sprite):
             if collision_info:
                 # Столкновение произошло!
                 self.rect.topleft = collision_info['position_before']  # Устанавливаем курсор в позицию перед столкновением
+                if type(collision_info['sprite']) is RedWall:
+                    self.rect.topleft = level.mouse_pos
                 pygame.mouse.set_pos(self.rect.topleft)
             else:
                 # Нет столкновений, перемещаем курсор в текущую позицию мыши.
@@ -151,7 +144,6 @@ class Cursor(pygame.sprite.Sprite):
             # Если нет объектов уровня для проверки, просто перемещаем курсор.
             self.rect.topleft = current_pos
 
-        # Обновляем prev_pos для следующего кадра!  Это КЛЮЧЕВОЙ момент.
         self.prev_pos = self.rect.topleft
 
     def load_objects(self, objects):
@@ -169,6 +161,13 @@ class Wall(pygame.sprite.Sprite):
             self.image = pygame.Surface((abs(pos[0] - pos[2]), abs(pos[1] - pos[3])))
         self.rect = self.image.get_rect()
         self.rect.topleft = (pos[0], pos[1])
+        self.has_collision = True
+
+
+class RedWall(Wall):
+    def __init__(self, pos, *groups):
+        super().__init__(pos, *groups)
+        self.image.fill((255, 0, 0))
         self.has_collision = True
 
 
@@ -220,14 +219,15 @@ class AnimatedFinish(pygame.sprite.Sprite):
 class Level:
     names_to_classes = {
         'wall': Wall,
-        'cursor': Cursor,
         'finish': AnimatedFinish,
+        'redwall': RedWall,
     }
 
     def __init__(self, file_names):
         self.file_names = file_names
         self.cur_level = 0
         self.sprites = pygame.sprite.Group()
+        self.mouse_pos = (0, 0)
         self.load()
 
     def load(self, file_name=None):
@@ -245,7 +245,12 @@ class Level:
                 obj, *data = line.split(';')
                 if obj == 'cursor':
                     cursor.update((int(data[0]), int(data[1])))
+                    self.mouse_pos = (int(data[0]), int(data[1]))
                     pygame.mouse.set_pos((int(data[0]), int(data[1])))
+                elif obj == 'image':
+                    im = load_image(data[0])
+                    obj = Image(tuple(map(int, data[1:3])), im)
+                    self.sprites.add(obj)
                 elif obj in self.names_to_classes:
                     obj = self.names_to_classes[obj](tuple(map(int, data)))
                     self.sprites.add(obj)
@@ -272,10 +277,9 @@ def main():
     global level
 
     pygame.mouse.set_visible(False)
-    # cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor_animated_lightning.png'), animated_frames=4)
     cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))
     cursor_group = pygame.sprite.Group(cursor)
-    level = Level(['level1.csv', 'level2.csv'])
+    level = Level(['level1.csv', 'level2.csv', 'level3.csv'])
     cursor.load_objects(level.sprites)
     while True:
         for event in pygame.event.get():
@@ -286,6 +290,9 @@ def main():
                     pygame.mouse.set_visible(True)
                     pause_screen()
                     pygame.mouse.set_visible(False)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    print(event.pos)
 
         screen.fill((255, 255, 255))
         level.sprites.update()

@@ -1,11 +1,11 @@
 cursor;60;300
+redwall;200;0;220;400
+redwall;400;200;420;600
 wall;0;0;800;150
 wall;0;450;800;600
 wall;0;0;20;600
 wall;780;0;800;600
 finish;660;250;750;350
-wall;200;0;220;400
-wall;400;200;420;600
 image;arrow.png;50;235
 image;arrow.png;250;235
 image;arrow.png;480;235
