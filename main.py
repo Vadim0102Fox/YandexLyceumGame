@@ -279,7 +279,7 @@ def main():
     pygame.mouse.set_visible(False)
     cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))
     cursor_group = pygame.sprite.Group(cursor)
-    level = Level(['level1.csv', 'level2.csv', 'level3.csv'])
+    level = Level([file for file in os.listdir('data') if file.startswith('level')])
     cursor.load_objects(level.sprites)
     while True:
         for event in pygame.event.get():
