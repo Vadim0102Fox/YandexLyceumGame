@@ -106,8 +106,8 @@ while True:
                 current_level_name = new_level_name
                 logging.info(f"Уровень переключен на {new_level_name}")
             except (IndexError, ValueError):
-                level.load(current_level_name)
-                cursor.load_objects(level.sprites)
+                level.sprites.empty()
+                cursor.level_objects.empty()
 
     except queue.Empty:
         pass
