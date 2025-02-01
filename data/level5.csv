@@ -1,4 +1,4 @@
-cursor;650;285
+cursor;670;290
 redwall;170;0;190;400
 redwall;260;200;280;600
 redwall;350;0;370;400
@@ -9,4 +9,4 @@ wall;0;450;800;600
 wall;0;0;20;600
 wall;780;0;800;600
 finish;40;250;130;350
-image;arrow_left.png;590;235
+image;arrow_left.png;610;235
