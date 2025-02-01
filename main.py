@@ -157,7 +157,7 @@ class Wall(pygame.sprite.Sprite):
         if image:
             self.image = image
         else:
-            print(pos)
+            # print(pos)
             self.image = pygame.Surface((abs(pos[0] - pos[2]), abs(pos[1] - pos[3])))
         self.rect = self.image.get_rect()
         self.rect.topleft = (pos[0], pos[1])
@@ -240,20 +240,25 @@ class Level:
         with open(os.path.join('data', file_name), 'r') as f:
             for line in f.readlines():
                 line = line.strip()
-                if line.startswith('#'):
+                if line.startswith('#') or not line:
                     continue
-                obj, *data = line.split(';')
-                if obj == 'cursor':
-                    cursor.update((int(data[0]), int(data[1])))
-                    self.mouse_pos = (int(data[0]), int(data[1]))
-                    pygame.mouse.set_pos((int(data[0]), int(data[1])))
-                elif obj == 'image':
-                    im = load_image(data[0])
-                    obj = Image(tuple(map(int, data[1:3])), im)
-                    self.sprites.add(obj)
-                elif obj in self.names_to_classes:
-                    obj = self.names_to_classes[obj](tuple(map(int, data)))
-                    self.sprites.add(obj)
+                try:
+                    obj, *data = line.split(';')
+                    if obj == 'cursor':
+                        cursor.update((int(data[0]), int(data[1])))
+                        self.mouse_pos = (int(data[0]), int(data[1]))
+                        pygame.mouse.set_pos((int(data[0]), int(data[1])))
+                    elif obj == 'image':
+                        im = load_image(data[0])
+                        obj = Image(tuple(map(int, data[1:3])), im)
+                        self.sprites.add(obj)
+                    elif obj in self.names_to_classes:
+                        obj = self.names_to_classes[obj](tuple(map(int, data)))
+                        self.sprites.add(obj)
+                    else:
+                        print('unknown object in line:', line)
+                except (ValueError, IndexError):
+                    print('error when loading line:', line, '. skipping.')
         cursor.load_objects(self.sprites)
 
 
@@ -272,13 +277,34 @@ def pause_screen():
         clock.tick(60)
 
 
+class Timer(pygame.sprite.Sprite):
+    font = pygame.font.SysFont('comicsans', 30)
+
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((70, 30))
+        self.image.fill((0, 0, 0))
+        self.rect = self.image.get_rect()
+        self.rect.topright = (WIDTH - 10, 5)
+        self.value = 0
+        self.event = pygame.USEREVENT + 2
+        pygame.time.set_timer(self.event, 1000)
+        self.update_next()
+
+    def update_next(self):
+        self.image.fill((0, 0, 0))
+        text_surface = self.font.render(str(self.value), True, (255, 155, 255))
+        self.image.blit(text_surface, (70 - text_surface.get_width(), -6))
+
+
 def main():
     global cursor
     global level
 
     pygame.mouse.set_visible(False)
+    timer = Timer()
     cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))
-    cursor_group = pygame.sprite.Group(cursor)
+    cursor_group = pygame.sprite.Group((cursor, timer))
     level = Level([file for file in os.listdir('data') if file.startswith('level')])
     cursor.load_objects(level.sprites)
     while True:
@@ -293,6 +319,9 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     print(event.pos)
+            elif event.type == timer.event:
+                timer.value += 1
+                timer.update_next()
 
         screen.fill((255, 255, 255))
         level.sprites.update()
