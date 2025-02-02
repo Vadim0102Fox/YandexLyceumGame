@@ -234,7 +234,7 @@ class Level:
         self.sprites = pygame.sprite.Group()
         if file_name is None:
             if self.cur_level >= len(self.file_names):
-                return
+                return False
             file_name = self.file_names[self.cur_level]
             self.cur_level += 1
         with open(os.path.join('data', file_name), 'r') as f:
@@ -260,11 +260,14 @@ class Level:
                 except (ValueError, IndexError):
                     print('error when loading line:', line, '. skipping.')
         cursor.load_objects(self.sprites)
+        return True
 
 
 def pause_screen():
+    pause_surface = load_image('pause_window.png')
     prev_pos = pygame.mouse.get_pos()
-    screen.fill((100, 0, 100))
+    # screen.fill((100, 0, 100))
+    screen.blit(pause_surface, (0, 0))
     pygame.display.flip()
     while True:
         for event in pygame.event.get():
@@ -282,8 +285,8 @@ class Timer(pygame.sprite.Sprite):
 
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((70, 30))
-        self.image.fill((0, 0, 0))
+        self.image = pygame.Surface((70, 30), pygame.SRCALPHA)
+        self.image.fill((0, 0, 0, 0))
         self.rect = self.image.get_rect()
         self.rect.topright = (WIDTH - 10, 5)
         self.value = 0
@@ -292,7 +295,7 @@ class Timer(pygame.sprite.Sprite):
         self.update_next()
 
     def update_next(self):
-        self.image.fill((0, 0, 0))
+        self.image.fill((0, 0, 0, 0))
         text_surface = self.font.render(str(self.value), True, (255, 155, 255))
         self.image.blit(text_surface, (70 - text_surface.get_width(), -6))
 
