@@ -1,6 +1,5 @@
 # Функция для определения стороны столкновения
 import math
-
 import pygame
 
 
@@ -24,8 +23,6 @@ def get_collision_side(rect1, rect2):
             return "bottom"
         else:
             return "top"
-
-    return None # В случае, если не удалось определить (например, rect находятся точно друг над другом)
 
 # Функция для вычисления координат до столкновения
 def get_position_before_collision(start_pos, current_pos, collided_rect):
