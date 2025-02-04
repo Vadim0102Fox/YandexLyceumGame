@@ -4,6 +4,7 @@ import pygame
 import collisions
 
 pygame.init()
+
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Лабиринт в курсоре')
@@ -11,6 +12,9 @@ clock = pygame.time.Clock()
 
 
 class GUIButton(pygame.sprite.Sprite):
+    """
+    Класс для создания интерактивных кнопок GUI.
+    """
     def __init__(self, pos, image_default, image_active=None, action=None, *groups):
         super().__init__(*groups)
         self.image_default = image_default
@@ -21,6 +25,10 @@ class GUIButton(pygame.sprite.Sprite):
         self.func = action
 
     def update(self):
+        """
+        Обновляет состояние кнопки в зависимости от позиции мыши.
+        Если мышь находится над кнопкой, меняет изображение и выполняет действие при нажатии.
+        """
         x, y = pygame.mouse.get_pos()
         if self.rect.collidepoint(x, y):
             self.image = self.image_active
@@ -30,68 +38,10 @@ class GUIButton(pygame.sprite.Sprite):
             self.image = self.image_default
 
 
-def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
-    # если файл не существует, то выходим
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    if colorkey is not None:
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    else:
-        image = image.convert_alpha()
-    return image
-
-
-def start_window():
-    im = load_image('start_window.png')
-    all_sprites = pygame.sprite.Group()
-    play_button = GUIButton((313, 407),
-        load_image('play_button_default.png'), load_image('play_button_active.png'), lambda: True, all_sprites)
-    rules_button = GUIButton((10, 535),
-        load_image('rules_button_default.png'), load_image('rules_button_active.png'), lambda: [rules_window()], all_sprites)
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-        if play_button.update():
-            return
-        if rules_button.update():
-            return
-        screen.fill((0, 0, 0))
-        screen.blit(im, (0, 0))
-        all_sprites.update()
-        all_sprites.draw(screen)
-        pygame.display.flip()
-        clock.tick(60)
-
-
-def rules_window():
-    im = load_image('rules_window.png')
-    all_sprites = pygame.sprite.Group()
-    play_button = GUIButton((594, 520),
-        load_image('play_button_default.png'), load_image('play_button_active.png'), lambda: True, all_sprites)
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-        if play_button.update():
-            return
-        screen.fill((0, 0, 0))
-        screen.blit(im, (0, 0))
-        all_sprites.update()
-        all_sprites.draw(screen)
-        pygame.display.flip()
-        clock.tick(60)
-
-
 class Image(pygame.sprite.Sprite):
+    """
+    Класс для отображения статических изображений.
+    """
     def __init__(self, pos, image_default, image_active=None, *groups):
         super().__init__(*groups)
         self.image_default = image_default
@@ -99,9 +49,12 @@ class Image(pygame.sprite.Sprite):
         self.image = self.image_default
         self.rect = self.image_default.get_rect()
         self.rect.topleft = pos
-        self.has_collision = False
+        self.has_collision = False  # По умолчанию столкновения отключены
 
     def update(self):
+        """
+        Обновляет изображение, если есть активное изображение и курсор над ним.
+        """
         x, y = pygame.mouse.get_pos()
         if self.image_active:
             if self.rect.collidepoint(x, y):
@@ -111,6 +64,9 @@ class Image(pygame.sprite.Sprite):
 
 
 class Cursor(pygame.sprite.Sprite):
+    """
+    Класс для управления курсором, его движением и столкновениями.
+    """
     def __init__(self, pos, image, level_objects=None, *groups):
         super().__init__(*groups)
         self.image = image
@@ -121,6 +77,9 @@ class Cursor(pygame.sprite.Sprite):
         self.prev_pos = pos
 
     def update(self, pos=None):
+        """
+        Обновляет позицию курсора, проверяет столкновения с объектами уровня.
+        """
         if pos:
             self.prev_pos = pos
             self.rect.topleft = pos
@@ -147,11 +106,16 @@ class Cursor(pygame.sprite.Sprite):
         self.prev_pos = self.rect.topleft
 
     def load_objects(self, objects):
-        if objects:
-            self.level_objects = pygame.sprite.Group(tuple(filter(lambda obj: obj.has_collision, objects)))
+        if not objects:
+            self.level_objects = pygame.sprite.Group()
+            return
+        self.level_objects = pygame.sprite.Group(tuple(filter(lambda obj: obj.has_collision, objects)))
 
 
 class Wall(pygame.sprite.Sprite):
+    """
+    Класс для создания стен.
+    """
     def __init__(self, pos, image=None, *groups):
         super().__init__(*groups)
         if image:
@@ -161,17 +125,23 @@ class Wall(pygame.sprite.Sprite):
             self.image = pygame.Surface((abs(pos[0] - pos[2]), abs(pos[1] - pos[3])))
         self.rect = self.image.get_rect()
         self.rect.topleft = (pos[0], pos[1])
-        self.has_collision = True
+        self.has_collision = True  # По умолчанию столкновения включены
 
 
 class RedWall(Wall):
+    """
+    Класс для создания красных стен (специальный тип стен).
+    """
     def __init__(self, pos, *groups):
         super().__init__(pos, *groups)
         self.image.fill((255, 0, 0))
-        self.has_collision = True
+        self.has_collision = True  # По умолчанию столкновения включены
 
 
 class AnimatedFinish(pygame.sprite.Sprite):
+    """
+    Класс для создания анимированного финиша уровня.
+    """
     def __init__(self, pos, image=None, clip_height=10, speed=1, pause_duration=30, *groups):
         super().__init__(*groups)
         self.x1, self.y1, self.x2, self.y2 = pos
@@ -186,6 +156,9 @@ class AnimatedFinish(pygame.sprite.Sprite):
         self.has_collision = False
 
     def checkerboard(self, size, cell_size=5):
+        """
+        Создает изображение в виде шахматной доски.
+        """
         img = pygame.Surface(size)
         for row in range(size[1] // cell_size):
             for col in range(size[0] // cell_size):
@@ -194,6 +167,10 @@ class AnimatedFinish(pygame.sprite.Sprite):
         return img
 
     def update(self):
+        """
+        Обновляет анимацию финиша и проверяет столкновение с курсором.
+        При столкновении загружает следующий уровень.
+        """
         if cursor:
             if self.rect.collidepoint(cursor.rect.topleft):
                 print('!!!')
@@ -217,6 +194,10 @@ class AnimatedFinish(pygame.sprite.Sprite):
 
 
 class Level:
+    """
+    Класс для загрузки и управления уровнем игры.
+    """
+    # Словарь для сопоставления имен объектов и классов
     names_to_classes = {
         'wall': Wall,
         'finish': AnimatedFinish,
@@ -228,12 +209,17 @@ class Level:
         self.cur_level = 0
         self.sprites = pygame.sprite.Group()
         self.mouse_pos = (0, 0)
+        self.levels_ended = False
         self.load()
 
     def load(self, file_name=None):
+        """
+        Загружает уровень из файла.
+        """
         self.sprites = pygame.sprite.Group()
         if file_name is None:
             if self.cur_level >= len(self.file_names):
+                self.levels_ended = True
                 return False
             file_name = self.file_names[self.cur_level]
             self.cur_level += 1
@@ -263,25 +249,11 @@ class Level:
         return True
 
 
-def pause_screen():
-    pause_surface = load_image('pause_window.png')
-    prev_pos = pygame.mouse.get_pos()
-    # screen.fill((100, 0, 100))
-    screen.blit(pause_surface, (0, 0))
-    pygame.display.flip()
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    return pygame.mouse.set_pos(prev_pos)
-
-        clock.tick(60)
-
-
 class Timer(pygame.sprite.Sprite):
-    font = pygame.font.SysFont('comicsans', 30)
+    """
+    Класс для внутри-игрового таймера.
+    """
+    font = pygame.font.SysFont('Comic Sans MS', 30)
 
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -300,20 +272,193 @@ class Timer(pygame.sprite.Sprite):
         self.image.blit(text_surface, (70 - text_surface.get_width(), -6))
 
 
-def main():
-    global cursor
-    global level
+def load_image(name, colorkey=None):
+    fullname = os.path.join('data', name)
+    # если файл не существует, то выходим
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
+    return image
 
-    pygame.mouse.set_visible(False)
-    timer = Timer()
-    cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))
-    cursor_group = pygame.sprite.Group((cursor, timer))
-    level = Level([file for file in os.listdir('data') if file.startswith('level')])
-    cursor.load_objects(level.sprites)
+
+def start_window():
+    """
+    Отображает стартовое окно с кнопками "Играть" и "Правила".
+    """
+    im = load_image('start_window.png')
+    all_sprites = pygame.sprite.Group()
+    # Создание кнопок с использованием GUIButton
+    play_button = GUIButton(
+        (313, 407),
+        load_image('play_button_default.png'),
+        load_image('play_button_active.png'),
+        lambda: True,
+        all_sprites
+    )
+    rules_button = GUIButton(
+        (10, 535),
+        load_image('rules_button_default.png'),
+        load_image('rules_button_active.png'),
+        lambda: [rules_window()],
+        all_sprites
+    )
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
+
+        if play_button.update():
+            return  # Нажата кнопка "Играть", выходим из стартового окна
+        if rules_button.update():
+            return  # Нажата кнопка "Правила", выходим из стартового окна
+
+        # Отрисовка элементов стартового окна
+        screen.fill((0, 0, 0))
+        screen.blit(im, (0, 0))
+        all_sprites.update()
+        all_sprites.draw(screen)
+        pygame.display.flip()
+        clock.tick(60)
+
+
+def rules_window():
+    """
+    Отображает окно с правилами игры.
+    """
+    im = load_image('rules_window.png')
+    all_sprites = pygame.sprite.Group()
+    # Создание кнопки "Играть"
+    play_button = GUIButton(
+        (594, 520),
+        load_image('play_button_default.png'),
+        load_image('play_button_active.png'),
+        lambda: True,
+        all_sprites
+    )
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+
+        if play_button.update():
+            return  # Нажата кнопка "Играть", выходим из окна правил
+
+        # Отрисовка элементов окна правил
+        screen.fill((0, 0, 0))
+        screen.blit(im, (0, 0))
+        all_sprites.update()
+        all_sprites.draw(screen)
+        pygame.display.flip()
+        clock.tick(60)
+
+
+def pause_screen():
+    """
+    Отображает экран паузы
+    """
+    pause_surface = load_image('pause_window.png')
+    prev_pos = pygame.mouse.get_pos()
+    # screen.fill((100, 0, 100))
+    screen.blit(pause_surface, (0, 0))
+    pygame.display.flip()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return pygame.mouse.set_pos(prev_pos)
+
+        clock.tick(60)
+
+
+def end_screen():
+    """
+    Отображает экран окончания игры с результатами
+    """
+    best_available = False
+    # Проверка наличия файла с лучшим рекордом
+    if os.path.exists(os.path.join('data', 'best_record.txt')):
+        with open(os.path.join('data', 'best_record.txt'), 'r') as f:
+            best_value = int(f.readline().strip())
+            best_minutes, best_seconds = best_value // 60, best_value % 60
+            best_available = True
+
+    font = pygame.font.SysFont('Comic Sans MS', 30)
+    pygame.mouse.set_visible(True)  # Показываем курсор мыши
+
+    value = timer.value
+    minutes, seconds = value // 60, value % 60
+
+    end_surface = load_image('end_window.png')
+    screen.blit(end_surface, (0, 0))
+
+    # Отображение текущего времени прохождения
+    current_time_surface = font.render(f'Прохождение: {minutes}:{seconds}', True, (255, 255, 255))
+    screen.blit(current_time_surface, (20, 200))
+
+    # Отображение лучшего времени (если доступно)
+    if best_available:
+        if value < best_value:
+            best_time_surface = font.render(f'Предыдущее лучшее время: {best_minutes}:{best_seconds}', True, (255, 255, 255))
+            with open(os.path.join('data', 'best_record.txt'), 'w') as f:
+                f.write(str(best_value))
+        else:
+            best_time_surface = font.render(f'Лучшее время: {best_minutes}:{best_seconds}', True, (255, 255, 255))
+        screen.blit(best_time_surface, (20, 250))
+
+    all_sprites = pygame.sprite.Group()
+    # Создание кнопки "Назад"
+    back_button = GUIButton(
+        (600, 535),
+        load_image('back_button_default.png'),
+        load_image('back_button_active.png'),
+        lambda: True,
+        all_sprites
+    )
+
+    pygame.display.flip()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+
+        if back_button.update():
+            return  # Нажата кнопка "Назад", возвращаемся в главное меню
+
+        all_sprites.draw(screen)
+        pygame.display.flip()
+        clock.tick(60)
+
+
+def main():
+    global cursor
+    global level
+    global timer
+
+    pygame.mouse.set_visible(False)  # Прячем системный курсор мыши
+    timer = Timer()  # Создаем экземпляр таймера
+    cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))  # Создаем экземпляр курсора
+    cursor_group = pygame.sprite.Group((cursor, timer))  # Группа для курсора и таймера для удобства обновления и отрисовки
+    level = Level([file for file in os.listdir('data') if file.startswith('level')])
+    # level = Level(['level1.csv'])
+    cursor.load_objects(level.sprites)  # Загружаем объекты уровня для обработки столкновений
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()  # Выход из игры при закрытии окна
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     pygame.mouse.set_visible(True)
@@ -326,15 +471,20 @@ def main():
                 timer.value += 1
                 timer.update_next()
 
-        screen.fill((255, 255, 255))
-        level.sprites.update()
-        level.sprites.draw(screen)
-        cursor_group.update()
-        cursor_group.draw(screen)
-        pygame.display.flip()
-        clock.tick(60)
+        if level.levels_ended:
+            return end_screen()  # Если все уровни пройдены, переходим на экран окончания игры
+
+        # Отрисовка элементов игры
+        screen.fill((255, 255, 255))  # Заливаем экран белым цветом
+        level.sprites.update()  # Обновляем спрайты уровня
+        level.sprites.draw(screen)  # Отрисовываем спрайты уровня
+        cursor_group.update()  # Обновляем спрайты курсора
+        cursor_group.draw(screen)  # Отрисовываем спрайты курсора
+        pygame.display.flip()  # Обновляем экран
+        clock.tick(60)  # Контролируем FPS
 
 
 if __name__ == '__main__':
-    start_window()
-    main()
+    while True:
+        start_window()  # Отображаем стартовое окно
+        main()  # Запускаем основную игру
