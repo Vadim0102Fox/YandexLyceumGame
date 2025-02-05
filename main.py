@@ -118,11 +118,12 @@ class Wall(pygame.sprite.Sprite):
     """
     def __init__(self, pos, image=None, *groups):
         super().__init__(*groups)
+        pos = correct_area_coords(pos)
         if image:
             self.image = image
         else:
             # print(pos)
-            self.image = pygame.Surface((abs(pos[0] - pos[2]), abs(pos[1] - pos[3])))
+            self.image = pygame.Surface((pos[2] - pos[0], pos[3] - pos[1]))
         self.rect = self.image.get_rect()
         self.rect.topleft = (pos[0], pos[1])
         self.has_collision = True  # По умолчанию столкновения включены
@@ -144,7 +145,7 @@ class AnimatedFinish(pygame.sprite.Sprite):
     """
     def __init__(self, pos, image=None, clip_height=10, speed=1, pause_duration=30, *groups):
         super().__init__(*groups)
-        self.x1, self.y1, self.x2, self.y2 = pos
+        self.x1, self.y1, self.x2, self.y2 = correct_area_coords(pos)
         self.width, self.height = abs(self.x1 - self.x2), abs(self.y1 - self.y2)
         self.clip_height, self.speed, self.pause_duration = clip_height, speed, pause_duration
         self.full_image = image if image else self.checkerboard((self.width, self.height * 2))
@@ -287,6 +288,15 @@ def load_image(name, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
+
+def correct_area_coords(*pos):
+    if len(pos) == 1:
+        x1, y1, x2, y2 = pos[0]
+    else:
+        x1, y1, x2, y2 = pos
+
+    return min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)
 
 
 def start_window():
@@ -451,7 +461,9 @@ def main():
     timer = Timer()  # Создаем экземпляр таймера
     cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))  # Создаем экземпляр курсора
     cursor_group = pygame.sprite.Group((cursor, timer))  # Группа для курсора и таймера для удобства обновления и отрисовки
-    level = Level([file for file in os.listdir('data') if file.startswith('level')])
+    files = [file for file in os.listdir('data') if file.startswith('level') and file.endswith('.csv')]
+    sorted_files = sorted(files, key=lambda x: int(x[5:-4]))  # Обрезаем "level" и ".csv" и преобразуем в int
+    level = Level(sorted_files)
     # level = Level(['level1.csv'])
     cursor.load_objects(level.sprites)  # Загружаем объекты уровня для обработки столкновений
 
