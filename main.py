@@ -441,6 +441,9 @@ def end_screen():
         else:
             best_time_surface = font.render(f'Лучшее время: {best_minutes}:{best_seconds}', True, (255, 255, 255))
         screen.blit(best_time_surface, (20, 250))
+    else:
+        with open(os.path.join('data', 'best_record.txt'), 'w') as f:
+            f.write(str(value))
 
     all_sprites = pygame.sprite.Group()
     # Создание кнопки "Назад"
