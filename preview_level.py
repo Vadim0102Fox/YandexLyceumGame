@@ -83,6 +83,7 @@ file_monitoring_thread.start()
 
 current_level_name = level_name
 activate_cursor = False
+coords = None
 
 while True:
     for event in pygame.event.get():
@@ -91,6 +92,15 @@ while True:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 activate_cursor = not activate_cursor
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            coords = event.pos
+        elif event.type == pygame.MOUSEBUTTONUP:
+            x1, y1 = coords
+            x2, y2 = pygame.mouse.get_pos()
+            x_min, x_max = min(x1, x2), max(x1, x2)
+            y_min, y_max = min(y1, y2), max(y1, y2)
+            print(x_min, y_min, x_max, y_max, sep=';')
+            coords = None
 
     try:
         changed_file = changed_files_queue.get(block=False)
@@ -117,6 +127,15 @@ while True:
     level.sprites.draw(main.screen)
     if activate_cursor:
         cursor_group.update()
+
+    if coords:
+        x1, y1 = coords
+        x2, y2 = pygame.mouse.get_pos()
+        x_min, x_max = min(x1, x2), max(x1, x2)
+        y_min, y_max = min(y1, y2), max(y1, y2)
+        selection_rect = pygame.Rect(x_min, y_min, x_max - x_min, y_max - y_min)
+        pygame.draw.rect(main.screen, (0, 0, 240), selection_rect)
+
     cursor_group.draw(main.screen)
     pygame.display.flip()
-    main.clock.tick(60)
+    # main.clock.tick(60)
