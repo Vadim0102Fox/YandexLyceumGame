@@ -143,7 +143,7 @@ class AnimatedFinish(pygame.sprite.Sprite):
     """
     Класс для создания анимированного финиша уровня.
     """
-    def __init__(self, pos, image=None, clip_height=10, speed=1, pause_duration=30, *groups):
+    def __init__(self, pos, image=None, clip_height=10, speed=1, pause_duration=60, *groups):
         super().__init__(*groups)
         self.x1, self.y1, self.x2, self.y2 = correct_area_coords(pos)
         self.width, self.height = abs(self.x1 - self.x2), abs(self.y1 - self.y2)
@@ -155,6 +155,8 @@ class AnimatedFinish(pygame.sprite.Sprite):
         self.paused = False
         self.pause_timer = 0
         self.has_collision = False
+        self.last_update_time = 0  # Время последнего обновления спрайта
+        self.frame_duration = 16  # Продолжительность одного кадра в миллисекундах
 
     def checkerboard(self, size, cell_size=5):
         """
@@ -177,6 +179,13 @@ class AnimatedFinish(pygame.sprite.Sprite):
                 print('!!!')
                 level.load()
 
+        current_time = pygame.time.get_ticks()
+        # Ограничение скорости обновления спрайта на основе времени
+        if current_time - self.last_update_time < self.frame_duration:
+            return  # Пропускаем обновление, если прошло слишком мало времени
+
+        self.last_update_time = current_time  # Обновляем время последнего обновления
+
         if self.paused:
             self.pause_timer += 1
             if self.pause_timer >= self.pause_duration:
@@ -184,7 +193,7 @@ class AnimatedFinish(pygame.sprite.Sprite):
                 self.pause_timer = 0
         else:
             self.scroll_y = (self.scroll_y + self.speed) % (self.full_image.get_height() - self.height)
-            if self.scroll_y == 0:
+            if self.scroll_y == 1:
                 self.paused = True
 
         self.image.fill((0, 0, 0, 0))
@@ -378,6 +387,8 @@ def pause_screen():
     """
     pause_surface = load_image('pause_window.png')
     prev_pos = pygame.mouse.get_pos()
+    pygame.mouse.set_visible(True)
+    pygame.event.set_grab(False)
     # screen.fill((100, 0, 100))
     screen.blit(pause_surface, (0, 0))
     pygame.display.flip()
@@ -387,6 +398,8 @@ def pause_screen():
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
+                    pygame.mouse.set_visible(False)
+                    pygame.event.set_grab(True)
                     return pygame.mouse.set_pos(prev_pos)
 
         clock.tick(60)
@@ -406,6 +419,7 @@ def end_screen():
 
     font = pygame.font.SysFont('Comic Sans MS', 30)
     pygame.mouse.set_visible(True)  # Показываем курсор мыши
+    pygame.event.set_grab(False)
 
     value = timer.value
     minutes, seconds = value // 60, value % 60
@@ -458,6 +472,7 @@ def main():
     global timer
 
     pygame.mouse.set_visible(False)  # Прячем системный курсор мыши
+    pygame.event.set_grab(True)
     timer = Timer()  # Создаем экземпляр таймера
     cursor = Cursor((WIDTH / 2, HEIGHT / 2), load_image('cursor.png'))  # Создаем экземпляр курсора
     cursor_group = pygame.sprite.Group((cursor, timer))  # Группа для курсора и таймера для удобства обновления и отрисовки
@@ -473,9 +488,7 @@ def main():
                 sys.exit()  # Выход из игры при закрытии окна
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    pygame.mouse.set_visible(True)
                     pause_screen()
-                    pygame.mouse.set_visible(False)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     print(event.pos)
@@ -493,7 +506,7 @@ def main():
         cursor_group.update()  # Обновляем спрайты курсора
         cursor_group.draw(screen)  # Отрисовываем спрайты курсора
         pygame.display.flip()  # Обновляем экран
-        clock.tick(60)  # Контролируем FPS
+        # clock.tick(60)  # Контролируем FPS
 
 
 if __name__ == '__main__':
