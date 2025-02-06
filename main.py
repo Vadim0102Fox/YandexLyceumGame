@@ -193,7 +193,7 @@ class AnimatedFinish(pygame.sprite.Sprite):
                 self.pause_timer = 0
         else:
             self.scroll_y = (self.scroll_y + self.speed) % (self.full_image.get_height() - self.height)
-            if self.scroll_y == 1:
+            if self.scroll_y == 0:
                 self.paused = True
 
         self.image.fill((0, 0, 0, 0))
@@ -227,6 +227,7 @@ class Level:
         Загружает уровень из файла.
         """
         self.sprites = pygame.sprite.Group()
+        self.mouse_pos = pygame.mouse.get_pos()
         if file_name is None:
             if self.cur_level >= len(self.file_names):
                 self.levels_ended = True
